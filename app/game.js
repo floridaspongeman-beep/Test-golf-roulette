@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet, SafeAreaView } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
 
 const challenges = [
   ["ONE CLUB", "Use only one club for this hole.", 3],
@@ -16,36 +15,25 @@ const challenges = [
 ];
 
 export default function Game() {
-  const params = useLocalSearchParams();
-  const playersParam = Array.isArray(params.players) ? params.players[0] : params.players;
-  const holesParam = Array.isArray(params.holes) ? params.holes[0] : params.holes;
-  const players = String(playersParam || "You|Player 2").split("|").filter(Boolean);
-  const total = holesParam === "18" ? 18 : 9;
   const [hole, setHole] = useState(1);
   const [challenge, setChallenge] = useState(null);
-  const [scores, setScores] = useState(() => players.map(() => 0));
+  const [score, setScore] = useState(0);
 
-  function spin() {
+  const spin = () => {
     setChallenge(challenges[Math.floor(Math.random() * challenges.length)]);
-  }
+  };
 
-  function finishHole() {
-    const gain = challenge ? challenge[2] : 0;
-    const next = scores.map((score, i) => score + (i === 0 ? gain : 0));
-    setScores(next);
-    if (hole >= total) {
-      router.replace({ pathname: "/results", params: { players: players.join("|"), scores: next.join("|"), holes: String(total) } });
-      return;
-    }
-    setHole(hole + 1);
+  const nextHole = () => {
+    setScore((value) => value + (challenge ? challenge[2] : 0));
     setChallenge(null);
-  }
+    setHole((value) => value >= 9 ? 1 : value + 1);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
         <View style={styles.top}>
-          <Text style={styles.hole}>HOLE {hole} / {total}</Text>
+          <Text style={styles.hole}>HOLE {hole} / 9</Text>
           <Text style={styles.mode}>CHAOS MODE</Text>
         </View>
 
@@ -68,19 +56,15 @@ export default function Game() {
             <Text style={styles.challenge}>{challenge[0]}</Text>
             <Text style={styles.desc}>{challenge[1]}</Text>
             <Text style={styles.points}>+{challenge[2]} ROULETTE POINTS</Text>
-            <Pressable style={styles.done} onPress={finishHole}>
-              <Text style={styles.doneText}>{hole >= total ? "FINISH ROUND" : "HOLE COMPLETE →"}</Text>
+            <Pressable style={styles.done} onPress={nextHole}>
+              <Text style={styles.doneText}>HOLE COMPLETE →</Text>
             </Pressable>
           </View>
         )}
 
-        <View style={styles.players}>
-          {players.map((name, i) => (
-            <View style={styles.player} key={name + i}>
-              <Text style={styles.playerName}>{name}</Text>
-              <Text style={styles.playerScore}>{scores[i]}</Text>
-            </View>
-          ))}
+        <View style={styles.scoreBox}>
+          <Text style={styles.scoreLabel}>YOUR POINTS</Text>
+          <Text style={styles.score}>{score}</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -108,8 +92,7 @@ const styles = StyleSheet.create({
   points: { color: "#b8e06b", fontWeight: "900", fontSize: 11, marginTop: 15, backgroundColor: "#1b2a20", paddingVertical: 9, paddingHorizontal: 14, borderRadius: 20 },
   done: { marginTop: 18, padding: 15, borderRadius: 13, backgroundColor: "#b8e06b", width: "100%", alignItems: "center" },
   doneText: { color: "#08110d", fontWeight: "900" },
-  players: { width: "100%", marginTop: 24 },
-  player: { backgroundColor: "#111d17", borderRadius: 11, padding: 11, flexDirection: "row", justifyContent: "space-between", marginBottom: 7 },
-  playerName: { color: "#cbd4ce" },
-  playerScore: { color: "#b8e06b", fontWeight: "900" }
+  scoreBox: { width: "100%", marginTop: 24, backgroundColor: "#111d17", borderRadius: 12, padding: 14, flexDirection: "row", justifyContent: "space-between" },
+  scoreLabel: { color: "#9aa69e", fontWeight: "800" },
+  score: { color: "#b8e06b", fontWeight: "900", fontSize: 18 }
 });
