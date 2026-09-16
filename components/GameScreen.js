@@ -14,15 +14,20 @@ const challenges = [
   { title: "CHAOS CARD", desc: "Choose another player to receive a challenge too.", points: 4, tag: "CHAOS" }
 ];
 
-export default function GameScreen() {
+export default function GameScreen({ holes = 9, names = ["You", "Player 2"] }) {
+  const players = names.filter((name) => name.trim()).length ? names.filter((name) => name.trim()) : ["You"];
   const [hole, setHole] = useState(1);
+  const [playerIndex, setPlayerIndex] = useState(0);
   const [challenge, setChallenge] = useState(null);
   const [score, setScore] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [finished, setFinished] = useState(false);
   const rotation = useRef(new Animated.Value(0)).current;
 
+  const currentPlayer = players[playerIndex % players.length];
+
   const spin = () => {
-    if (spinning) return;
+    if (spinning || finished) return;
     setSpinning(true);
     setChallenge(null);
     rotation.setValue(0);
@@ -38,15 +43,50 @@ export default function GameScreen() {
   };
 
   const nextHole = () => {
-    setScore((value) => value + (challenge ? challenge.points : 0));
+    const newScore = score + (challenge ? challenge.points : 0);
+    setScore(newScore);
     setChallenge(null);
-    setHole((value) => (value >= 9 ? 1 : value + 1));
+    if (hole >= holes) {
+      setFinished(true);
+      return;
+    }
+    setHole((value) => value + 1);
+    setPlayerIndex((value) => (value + 1) % players.length);
   };
 
-  const wheelSpin = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "1080deg"]
-  });
+  const restart = () => {
+    setHole(1);
+    setPlayerIndex(0);
+    setChallenge(null);
+    setScore(0);
+    setFinished(false);
+    setSpinning(false);
+    rotation.setValue(0);
+  };
+
+  const wheelSpin = rotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "1080deg"] });
+
+  if (finished) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.finishWrap}>
+          <Text style={styles.brand}>GOLF ROULETTE</Text>
+          <Text style={styles.finishEyebrow}>ROUND COMPLETE</Text>
+          <Text style={styles.finishTitle}>That's a wrap.</Text>
+          <Text style={styles.finishSub}>{holes} holes. {players.length} players. Zero excuses.</Text>
+          <View style={styles.finalCard}>
+            <Text style={styles.finalLabel}>FINAL ROULETTE SCORE</Text>
+            <Text style={styles.finalScore}>{score.toString().padStart(2, "0")}</Text>
+            <Text style={styles.finalCaption}>CHALLENGE POINTS</Text>
+          </View>
+          <Pressable style={styles.spinButton} onPress={restart}>
+            <Text style={styles.spinText}>PLAY AGAIN</Text>
+            <Text style={styles.spinArrow}>↗</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -54,7 +94,7 @@ export default function GameScreen() {
         <View style={styles.top}>
           <View>
             <Text style={styles.brand}>GOLF ROULETTE</Text>
-            <Text style={styles.hole}>HOLE {hole} <Text style={styles.muted}>/ 9</Text></Text>
+            <Text style={styles.hole}>HOLE {hole} <Text style={styles.muted}>/ {holes}</Text></Text>
           </View>
           <View style={styles.modePill}>
             <View style={styles.liveDot} />
@@ -63,7 +103,13 @@ export default function GameScreen() {
         </View>
 
         <View style={styles.progressTrack}>
-          <View style={[styles.progress, { width: `${(hole / 9) * 100}%` }]} />
+          <View style={[styles.progress, { width: `${(hole / holes) * 100}%` }]} />
+        </View>
+
+        <View style={styles.playerBanner}>
+          <Text style={styles.playerLabel}>UP NOW</Text>
+          <Text style={styles.playerName}>{currentPlayer}</Text>
+          <Text style={styles.playerCount}>PLAYER {(playerIndex % players.length) + 1} / {players.length}</Text>
         </View>
 
         <View style={styles.wheelArea}>
@@ -81,7 +127,7 @@ export default function GameScreen() {
           <View style={styles.center}>
             <Text style={styles.eyebrow}>{spinning ? "LET FATE DECIDE" : "THE NEXT CHALLENGE"}</Text>
             <Text style={styles.prompt}>{spinning ? "NO BACKING OUT." : "WHAT'S YOUR MOVE?"}</Text>
-            <Text style={styles.sub}>{spinning ? "The wheel is choosing your challenge..." : "One spin. One challenge. Play it."}</Text>
+            <Text style={styles.sub}>{spinning ? "The wheel is choosing your challenge..." : `${currentPlayer}, you're up. Give it a spin.`}</Text>
             <Pressable style={[styles.spinButton, spinning && styles.spinButtonOff]} onPress={spin} disabled={spinning}>
               <Text style={styles.spinText}>{spinning ? "DRAWING..." : "SPIN THE WHEEL"}</Text>
               {!spinning && <Text style={styles.spinArrow}>↗</Text>}
@@ -90,7 +136,10 @@ export default function GameScreen() {
         ) : (
           <View style={styles.card}>
             <View style={styles.cardTop}>
-              <Text style={styles.eyebrow}>{challenge.tag}</Text>
+              <View>
+                <Text style={styles.eyebrow}>{challenge.tag}</Text>
+                <Text style={styles.forText}>FOR {currentPlayer.toUpperCase()}</Text>
+              </View>
               <View style={styles.pointsBadge}>
                 <Text style={styles.points}>{challenge.points}</Text>
                 <Text style={styles.pts}>PTS</Text>
@@ -100,7 +149,7 @@ export default function GameScreen() {
             <Text style={styles.desc}>{challenge.desc}</Text>
             <View style={styles.divider} />
             <Pressable style={styles.done} onPress={nextHole}>
-              <Text style={styles.doneText}>COMPLETE HOLE</Text>
+              <Text style={styles.doneText}>{hole >= holes ? "FINISH ROUND" : "COMPLETE HOLE"}</Text>
               <Text style={styles.arrow}>→</Text>
             </Pressable>
           </View>
@@ -109,7 +158,7 @@ export default function GameScreen() {
         <View style={styles.scoreBox}>
           <View>
             <Text style={styles.scoreLabel}>ROULETTE SCORE</Text>
-            <Text style={styles.scoreHint}>Challenges completed</Text>
+            <Text style={styles.scoreHint}>{holes} holes  •  {players.length} players</Text>
           </View>
           <Text style={styles.score}>{score.toString().padStart(2, "0")}</Text>
         </View>
@@ -130,10 +179,14 @@ const styles = StyleSheet.create({
   mode: { color: "#b8d86a", fontSize: 9, fontWeight: "900", letterSpacing: 1.5 },
   progressTrack: { width: "100%", height: 3, backgroundColor: "#18201b", borderRadius: 2, marginTop: 18 },
   progress: { height: 3, backgroundColor: "#b8d86a", borderRadius: 2 },
-  wheelArea: { width: 250, height: 255, alignItems: "center", justifyContent: "center", marginVertical: 22 },
-  pointer: { position: "absolute", top: 2, zIndex: 5, width: 0, height: 0, borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 13, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: "#d5b46b" },
-  wheelOuter: { width: 218, height: 218, borderRadius: 109, borderWidth: 2, borderColor: "#3b473f", backgroundColor: "#0c120f", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 7 },
-  wheelInner: { width: 178, height: 178, borderRadius: 89, borderWidth: 1, borderColor: "#2b382f", alignItems: "center", justifyContent: "center", backgroundColor: "#111913" },
+  playerBanner: { width: "100%", marginTop: 13, flexDirection: "row", alignItems: "center", backgroundColor: "#0d130f", borderRadius: 12, paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: "#1f2a23" },
+  playerLabel: { color: "#c9a762", fontSize: 8, fontWeight: "900", letterSpacing: 1.5, marginRight: 10 },
+  playerName: { flex: 1, color: "#f3efe5", fontSize: 13, fontWeight: "900" },
+  playerCount: { color: "#59665e", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+  wheelArea: { width: 250, height: 245, alignItems: "center", justifyContent: "center", marginVertical: 16 },
+  pointer: { position: "absolute", top: 1, zIndex: 5, width: 0, height: 0, borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 13, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: "#d5b46b" },
+  wheelOuter: { width: 210, height: 210, borderRadius: 105, borderWidth: 2, borderColor: "#3b473f", backgroundColor: "#0c120f", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 7 },
+  wheelInner: { width: 174, height: 174, borderRadius: 87, borderWidth: 1, borderColor: "#2b382f", alignItems: "center", justifyContent: "center", backgroundColor: "#111913" },
   wheelMark: { color: "#b8d86a", fontSize: 39, fontWeight: "900", letterSpacing: -3 },
   wheelLine: { width: 34, height: 1, backgroundColor: "#4a554e", marginVertical: 9 },
   wheelText: { color: "#89958e", fontSize: 9, fontWeight: "900", letterSpacing: 2.5 },
@@ -146,7 +199,8 @@ const styles = StyleSheet.create({
   spinText: { color: "#09100c", fontSize: 13, fontWeight: "900", letterSpacing: 1.8 },
   spinArrow: { color: "#09100c", fontSize: 20, marginLeft: 10, marginTop: -2 },
   card: { width: "100%", backgroundColor: "#101612", borderRadius: 21, padding: 21, borderWidth: 1, borderColor: "#2b382f", shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  forText: { color: "#69766f", fontSize: 8, fontWeight: "900", letterSpacing: 1.1, marginTop: 5 },
   pointsBadge: { flexDirection: "row", alignItems: "baseline", backgroundColor: "#1a241d", borderRadius: 11, paddingHorizontal: 10, paddingVertical: 6 },
   points: { color: "#b8d86a", fontSize: 17, fontWeight: "900" },
   pts: { color: "#6f7c74", fontSize: 8, fontWeight: "900", marginLeft: 3 },
@@ -159,5 +213,13 @@ const styles = StyleSheet.create({
   scoreBox: { width: "100%", marginTop: 16, backgroundColor: "#0d130f", borderRadius: 15, padding: 15, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#1f2a23" },
   scoreLabel: { color: "#c4cbc6", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   scoreHint: { color: "#59655e", fontSize: 10, marginTop: 3 },
-  score: { color: "#f3efe5", fontWeight: "900", fontSize: 28, letterSpacing: 1 }
+  score: { color: "#f3efe5", fontWeight: "900", fontSize: 28, letterSpacing: 1 },
+  finishWrap: { flex: 1, width: "100%", maxWidth: 620, alignSelf: "center", padding: 24, alignItems: "center", justifyContent: "center" },
+  finishEyebrow: { color: "#c9a762", fontSize: 10, fontWeight: "900", letterSpacing: 2.4, marginTop: 32 },
+  finishTitle: { color: "#f3efe5", fontSize: 38, fontWeight: "900", marginTop: 8 },
+  finishSub: { color: "#6d7972", fontSize: 13, marginTop: 8, textAlign: "center" },
+  finalCard: { width: "100%", maxWidth: 390, marginTop: 30, padding: 28, borderRadius: 22, backgroundColor: "#101612", borderWidth: 1, borderColor: "#2b382f", alignItems: "center" },
+  finalLabel: { color: "#7d8982", fontSize: 9, fontWeight: "900", letterSpacing: 2 },
+  finalScore: { color: "#b8d86a", fontSize: 62, fontWeight: "900", marginTop: 8 },
+  finalCaption: { color: "#59665e", fontSize: 8, fontWeight: "900", letterSpacing: 1.8, marginTop: 2 }
 });
