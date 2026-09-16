@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { View, Text, Pressable, TextInput, StyleSheet, SafeAreaView, ScrollView } from "react-native";
-import { router } from "expo-router";
+import GameScreen from "../components/GameScreen";
 
 export default function Setup() {
   const [holes, setHoles] = useState(9);
   const [names, setNames] = useState(["You", "Player 2"]);
+  const [started, setStarted] = useState(false);
+
+  if (started) return <GameScreen />;
 
   const add = () => {
     if (names.length < 4) setNames([...names, `Player ${names.length + 1}`]);
@@ -60,7 +63,7 @@ export default function Setup() {
           </View>
         </View>
 
-        <Pressable style={s.primary} onPress={() => router.push("/game")}>
+        <Pressable style={s.primary} onPress={() => setStarted(true)}>
           <Text style={s.primaryText}>START ROULETTE  →</Text>
         </Pressable>
       </ScrollView>
